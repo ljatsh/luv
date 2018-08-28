@@ -119,6 +119,12 @@ static int luv_fiber_join(lua_State* L) {
   }
 }
 
+static int luv_fiber_runonce(lua_State* L) {
+  luv_state_t* curr = (luv_state_t*)luvL_state_self(L);
+  luvL_state_runonce(curr);
+  return 0;
+}
+
 static int luv_fiber_ready(lua_State* L) {
   luv_fiber_t* self = (luv_fiber_t*)lua_touserdata(L, 1);
   luvL_fiber_ready(self);
@@ -143,6 +149,7 @@ luaL_Reg luv_fiber_funcs[] = {
 luaL_Reg luv_fiber_meths[] = {
   {"join",      luv_fiber_join},
   {"ready",     luv_fiber_ready},
+  {"runonce",   luv_fiber_runonce},
   {"__gc",      luv_fiber_free},
   {"__tostring",luv_fiber_tostring},
   {NULL,        NULL}
