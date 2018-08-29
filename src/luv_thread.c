@@ -40,11 +40,6 @@ int luvL_thread_suspend(luv_thread_t* self) {
   return lua_gettop(self->L);
 }
 
-void luvL_thread_runonce(luv_thread_t* self) {
-  luvL_thread_loop(self);
-  uv_run_once(self->loop);
-}
-
 int luvL_thread_resume(luv_thread_t* self, int narg) {
   /* interrupt the uv_run_once loop in luvL_thread_schedule */
   TRACE("resuming...\n");

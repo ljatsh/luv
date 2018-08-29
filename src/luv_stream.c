@@ -54,7 +54,9 @@ static void _read_cb(uv_stream_t* stream, ssize_t len, uv_buf_t buf) {
       if (err.code == UV_EOF) {
         TRACE("GOT EOF\n");
         lua_settop(s->L, 0);
-        lua_pushnil(s->L);
+        //lua_pushnil(s->L);
+        lua_pushboolean(s->L, 0);
+        lua_pushfstring(s->L, "read: eof");
       }
       else {
         lua_settop(s->L, 0);
@@ -78,7 +80,7 @@ static void _read_cb(uv_stream_t* stream, ssize_t len, uv_buf_t buf) {
 static void _write_cb(uv_write_t* req, int status) {
   luv_state_t* rouse = container_of(req, luv_state_t, req);
   lua_settop(rouse->L, 0);
-  lua_pushinteger(rouse->L, status);
+  lua_pushboolean(rouse->L, status == 0 ? 1 : 0);
   TRACE("write_cb - wake up: %p\n", rouse);
   luvL_state_ready(rouse);
 }
@@ -209,7 +211,7 @@ static int luv_stream_read(lua_State* L) {
   int len = luaL_optinteger(L, 2, 4096);
   if (luvL_object_is_closing(self)) {
     TRACE("error: reading from closed stream\n");
-    lua_pushnil(L);
+    lua_pushboolean(L, 0);
     lua_pushstring(L, "attempt to read from a closed stream");
     return 2;
   }
@@ -226,7 +228,12 @@ static int luv_stream_read(lua_State* L) {
   }
   self->buf.len = len;
   if (!luvL_object_is_started(self)) {
-    luvL_stream_start(self);
+    if (luvL_stream_start(self)) {
+      luvL_stream_stop(self);
+      luvL_object_close(self);
+      STREAM_ERROR(L, "write: %s", luvL_event_loop(L));
+      return 2;
+    }
   }
   TRACE("read called... waiting\n");
   return luvL_cond_wait(&self->rouse, curr);

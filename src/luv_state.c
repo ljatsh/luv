@@ -59,9 +59,3 @@ int luvL_state_resume(luv_state_t* state, int narg) {
     return luvL_fiber_resume((luv_fiber_t*)state, narg);
   }
 }
-
-void luvL_state_runonce(luv_state_t* state) {
-  if (state->type == LUV_TTHREAD) {
-    return luvL_thread_runonce((luv_thread_t*)state);
-  }
-}

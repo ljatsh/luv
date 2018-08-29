@@ -2,7 +2,7 @@
 # configuration
 #
 # comment out to not include zmq. may be useful for embedded devices
-USE_ZMQ := 1
+USE_ZMQ := 0
 
 ##########
 
