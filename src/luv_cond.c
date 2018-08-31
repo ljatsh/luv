@@ -57,13 +57,11 @@ static int luv_cond_wait(lua_State *L) {
   else {
     curr = (luv_state_t*)luvL_state_self(L);
   }
-  luvL_cond_wait(cond, curr);
-  return 1;
+  return luvL_cond_wait(cond, curr);
 }
 static int luv_cond_signal(lua_State *L) {
   luv_cond_t* cond = (luv_cond_t*)lua_touserdata(L, 1);
-  luvL_cond_signal(cond);
-  return 1;
+  return luvL_cond_signal(cond);
 }
 static int luv_cond_broadcast(lua_State *L) {
   luv_cond_t* cond = (luv_cond_t*)lua_touserdata(L, 1);
