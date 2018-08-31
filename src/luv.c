@@ -417,6 +417,12 @@ LUALIB_API int luaopen_luv(lua_State *L) {
   luvL_new_class(L, LUV_PROCESS_T, luv_process_meths);
   lua_pop(L, 1);
 
+  /* luv.cond */
+  luvL_new_module(L, "luv_cond", luv_cond_funcs);
+  lua_setfield(L, -2, "cond");
+  luvL_new_class(L, LUV_COND_T, luv_cond_meths);
+  lua_pop(L, 1);
+
   /* luv.zmq */
 #ifdef USE_ZMQ
   luvL_new_module(L, "luv_zmq", luv_zmq_funcs);
