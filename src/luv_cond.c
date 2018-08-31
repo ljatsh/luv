@@ -61,7 +61,24 @@ static int luv_cond_wait(lua_State *L) {
 }
 static int luv_cond_signal(lua_State *L) {
   luv_cond_t* cond = (luv_cond_t*)lua_touserdata(L, 1);
-  return luvL_cond_signal(cond);
+
+  ngx_queue_t* q;
+  luv_state_t* s;
+  if (!ngx_queue_empty(cond)) {
+    q = ngx_queue_head(cond);
+    s = ngx_queue_data(q, luv_state_t, cond);
+    ngx_queue_remove(q);
+
+    // copy variables to the waiting state
+    int narg = lua_gettop(L) - 1;
+    lua_settop(s->L, 0);
+    lua_xmove(L, s->L, narg);
+
+    TRACE("READY state %p\n", s);
+    luvL_state_ready(s);
+    return 1;
+  }
+  return 0;
 }
 static int luv_cond_broadcast(lua_State *L) {
   luv_cond_t* cond = (luv_cond_t*)lua_touserdata(L, 1);

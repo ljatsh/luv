@@ -16,13 +16,13 @@ local main =  luv.fiber.create(function()
     luv.sleep(1)
     print('second waked up')
   
-    cond:signal()
+    cond:signal('hello', {}, false, 1)
     print('second exit')
   end, cond)
   second:ready()
 
   print('waiting condition')
-  cond:wait(main)
+  print('wait result: ', cond:wait(main))
 
   print('main sleeping...')
 
