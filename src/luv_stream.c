@@ -54,9 +54,9 @@ static void _read_cb(uv_stream_t* stream, ssize_t len, uv_buf_t buf) {
       if (err.code == UV_EOF) {
         TRACE("GOT EOF\n");
         lua_settop(s->L, 0);
-        //lua_pushnil(s->L);
-        lua_pushboolean(s->L, 0);
-        lua_pushfstring(s->L, "read: eof");
+        lua_pushnil(s->L);
+        //lua_pushboolean(s->L, 0);
+        //lua_pushfstring(s->L, "read: eof");
       }
       else {
         lua_settop(s->L, 0);
