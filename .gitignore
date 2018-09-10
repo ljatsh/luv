@@ -2,4 +2,5 @@
 *.so
 *.sw?
 build
-
+lua/build
+.DS_Store
