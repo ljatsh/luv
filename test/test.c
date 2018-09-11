@@ -50,8 +50,6 @@ int run_test(const char* res_path) {
     fprintf(stdout, "finished\n");
   }
 
-  fprintf(stdout, "finished...\n");
-
   lua_close(L);
   return ret;
 }

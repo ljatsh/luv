@@ -6,7 +6,7 @@
     'default_configuration': 'Release',
     'configurations': {
       'Debug': {
-        'defines': [ 'DEBUG', '_DEBUG', 'LUV_DEBUG' ],
+        'defines': [ 'DEBUG', '_DEBUG' ],
         'msvs_settings': {
           'VCCLCompilerTool': {
             'RuntimeLibrary': 1, # static debug

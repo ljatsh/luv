@@ -1,7 +1,7 @@
 #include "luv.h"
 
 void _exit_cb(uv_process_t* handle, int64_t status, int sigterm) {
-  TRACE("EXIT : status %i, sigterm %i\n", status, sigterm);
+  TRACE("EXIT : status %ld, sigterm %i\n", status, sigterm);
   luv_object_t* self = container_of(handle, luv_object_t, h);
 
   if (status != 0) {
