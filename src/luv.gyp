@@ -6,7 +6,7 @@
     'default_configuration': 'Release',
     'configurations': {
       'Debug': {
-        'defines': [ 'DEBUG', '_DEBUG' ],
+        'defines': [ 'DEBUG', '_DEBUG', 'LUV_DEBUG' ],
         'msvs_settings': {
           'VCCLCompilerTool': {
             'RuntimeLibrary': 1, # static debug
@@ -28,7 +28,7 @@
       },
     },
     'include_dirs': [
-       'src'
+      #'src'
      ],
 
     'conditions' : [
@@ -51,54 +51,25 @@
 
   'targets': [
     {
-      'target_name': 'liblua',
+      'target_name': 'libluv',
       'type': 'static_library',
-
+      'dependencies': [  '../lua/lua.gyp:liblua', '../libuv/uv.gyp:libuv' ],
       'sources': [
-        'src/lapi.c',
-        'src/lauxlib.c',
-        'src/lbaselib.c',
-        'src/lcode.c',
-        'src/ldblib.c',
-        'src/ldebug.c',
-        'src/ldo.c',
-        'src/ldump.c',
-        'src/lfunc.c',
-        'src/lgc.c',
-        'src/linit.c',
-        'src/liolib.c',
-        'src/llex.c',
-        'src/lmathlib.c',
-        'src/lmem.c',
-        'src/loadlib.c',
-        'src/lobject.c',
-        'src/lopcodes.c',
-        'src/loslib.c',
-        'src/lparser.c',
-        'src/lstate.c',
-        'src/lstring.c',
-        'src/lstrlib.c',
-        'src/ltable.c',
-        'src/ltablib.c',
-        'src/ltm.c',
-        'src/lundump.c',
-        'src/lvm.c',
-        'src/lzio.c'
-      ],
-      'direct_dependent_settings': {
-        'include_dirs': [
-          'src',
-        ],
-      }
-    },
-
-    # {
-    #   'target_name': 'liblua-ios',
-    #   'type': 'static_library',
-
-    #   'xcode_settings': {
-    #     'SDKROOT': 'iphoneos'
-    #   }
-    # }
+        'luv.c',
+        'luv_cond.c',
+        'luv_state.c',
+        'luv_fiber.c',
+        'luv_thread.c',
+        'luv_codec.c',
+        'luv_object.c',
+        'luv_timer.c',
+        'luv_idle.c',
+        'luv_fs.c',
+        'luv_stream.c',
+        'luv_pipe.c',
+        'luv_net.c',
+        'luv_process.c'
+      ]
+    }
   ]
 }

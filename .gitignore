@@ -3,4 +3,6 @@
 *.sw?
 build
 lua/build
+libuv/build
+src/build
 .DS_Store

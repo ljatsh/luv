@@ -26,8 +26,6 @@ extern "C" {
 #include "zmq/include/zmq_utils.h"
 #endif
 
-#undef LUV_DEBUG
-
 #ifdef LUV_DEBUG
 #  define TRACE(fmt, ...) do { \
     fprintf(stderr, "%s: %d: %s: " fmt, \
