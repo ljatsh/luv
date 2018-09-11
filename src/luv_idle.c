@@ -1,13 +1,12 @@
 #include "luv.h"
 
-static void _idle_cb(uv_idle_t* handle, int status) {
+static void _idle_cb(uv_idle_t* handle) {
   luv_object_t* self = container_of(handle, luv_object_t, h);
   ngx_queue_t* q;
   luv_state_t* s;
   ngx_queue_foreach(q, &self->rouse) {
     s = ngx_queue_data(q, luv_state_t, cond);
     lua_settop(s->L, 0);
-    lua_pushinteger(s->L, status);
   }
   luvL_cond_broadcast(&self->rouse);
 }

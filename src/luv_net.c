@@ -109,9 +109,8 @@ static int luv_getaddrinfo(lua_State* L) {
   }
 
   int rv = uv_getaddrinfo(loop, req, _getaddrinfo_cb, node, service, &hints);
-  if (rv) {
-    uv_err_t err = uv_last_error(loop);
-    return luaL_error(L, uv_strerror(err));
+  if (rv < 0) {
+    return luaL_error(L, uv_strerror(rv));
   }
 
   return luvL_state_suspend(curr);
@@ -126,9 +125,13 @@ static int luv_tcp_bind(lua_State* L) {
 
   host = luaL_checkstring(L, 2);
   port = luaL_checkint(L, 3);
-  addr = uv_ip4_addr(host, port);
+  int err = uv_ip4_addr(host, port, &addr);
+  if (err < 0) {
+    lua_pushinteger(L, err);
+    return 1;
+  }
 
-  rv = uv_tcp_bind(&self->h.tcp, addr);
+  rv = uv_tcp_bind(&self->h.tcp, (const struct sockaddr*)&addr, 0);
   lua_pushinteger(L, rv);
 
   return 1;
@@ -144,16 +147,22 @@ static int luv_tcp_connect(lua_State *L) {
 
   host = luaL_checkstring(L, 2);
   port = luaL_checkint(L, 3);
-  addr = uv_ip4_addr(host, port);
+  int err = uv_ip4_addr(host, port, &addr);
 
-  lua_settop(L, 2);
-
-  rv = uv_tcp_connect(&curr->req.connect, &self->h.tcp, addr, luvL_connect_cb);
-  if (rv) {
-    uv_err_t err = uv_last_error(self->h.handle.loop);
+  if (err < 0) {
     lua_settop(L, 0);
     lua_pushnil(L);
     lua_pushstring(L, uv_strerror(err));
+    return 2;
+  }
+
+  lua_settop(L, 2);
+
+  rv = uv_tcp_connect(&curr->req.connect, &self->h.tcp, (const struct sockaddr*)&addr, luvL_connect_cb);
+  if (rv < 0) {
+    lua_settop(L, 0);
+    lua_pushnil(L);
+    lua_pushstring(L, uv_strerror(rv));
     return 2;
   }
 
@@ -194,8 +203,8 @@ static int luv_tcp_getsockname(lua_State* L) {
   struct sockaddr_storage addr;
   int len = sizeof(addr);
 
-  if (uv_tcp_getsockname(&self->h.tcp, (struct sockaddr*)&addr, &len)) {
-    uv_err_t err = uv_last_error(luvL_event_loop(L));
+  int err = uv_tcp_getsockname(&self->h.tcp, (struct sockaddr*)&addr, &len);
+  if (err < 0) {
     return luaL_error(L, "getsockname: %s", uv_strerror(err));
   }
 
@@ -233,8 +242,8 @@ static int luv_tcp_getpeername(lua_State* L) {
   struct sockaddr_storage addr;
   int len = sizeof(addr);
 
-  if (uv_tcp_getpeername(&self->h.tcp, (struct sockaddr*)&addr, &len)) {
-    uv_err_t err = uv_last_error(luvL_event_loop(L));
+  int err = uv_tcp_getpeername(&self->h.tcp, (struct sockaddr*)&addr, &len);
+  if (err < 0) {
     return luaL_error(L, "getpeername: %s", uv_strerror(err));
   }
 
@@ -285,10 +294,14 @@ static int luv_udp_bind(lua_State* L) {
 
   int flags = 0;
 
-  struct sockaddr_in address = uv_ip4_addr(host, port);
+  struct sockaddr_in address;
+  int err = uv_ip4_addr(host, port, &address);
+  if (err < 0) {
+    return luaL_error(L, uv_strerror(err));
+  }
 
-  if (uv_udp_bind(&self->h.udp, address, flags)) {
-    uv_err_t err = uv_last_error(luvL_event_loop(L));
+  err = uv_udp_bind(&self->h.udp, (const struct sockaddr*)&address, flags);
+  if (err < 0) {
     return luaL_error(L, uv_strerror(err));
   }
 
@@ -311,18 +324,22 @@ static int luv_udp_send(lua_State* L) {
   const char* mesg = luaL_checklstring(L, 4, &len);
 
   uv_buf_t buf = uv_buf_init((char*)mesg, len);
-  struct sockaddr_in addr = uv_ip4_addr(host, port);
+  struct sockaddr_in addr;
+  int err = uv_ip4_addr(host, port, &addr);
+  if (err < 0) {
+    luaL_error(L, uv_strerror(err));
+  }
 
-  if (uv_udp_send(&curr->req.udp_send, &self->h.udp, &buf, 1, addr, _send_cb)) {
+  err = uv_udp_send(&curr->req.udp_send, &self->h.udp, &buf, 1, (const struct sockaddr*)&addr, _send_cb);
+  if (err < 0) {
     /* TODO: this shouldn't be fatal */
-    uv_err_t err = uv_last_error(luvL_event_loop(L));
     return luaL_error(L, uv_strerror(err));
   }
 
   return luvL_state_suspend(curr);
 }
 
-static void _recv_cb(uv_udp_t* handle, ssize_t nread, uv_buf_t buf, struct sockaddr* peer, unsigned flags) {
+static void _recv_cb(uv_udp_t* handle, ssize_t nread, const uv_buf_t* buf, const struct sockaddr* peer, unsigned flags) {
   luv_object_t* self = container_of(handle, luv_object_t, h);
   ngx_queue_t* q;
   luv_state_t* s;
@@ -334,7 +351,8 @@ static void _recv_cb(uv_udp_t* handle, ssize_t nread, uv_buf_t buf, struct socka
     s = ngx_queue_data(q, luv_state_t, cond);
 
     lua_settop(s->L, 0);
-    lua_pushlstring(s->L, buf.base, buf.len);
+    lua_pushlstring(s->L, buf->base, buf->len);
+    free(buf->base);
 
     if (peer->sa_family == PF_INET) {
       struct sockaddr_in* addr = (struct sockaddr_in*)peer;
@@ -373,8 +391,8 @@ int luv_udp_membership(lua_State* L) {
   int option = luaL_checkoption(L, 4, NULL, LUV_UDP_MEMBERSHIP_OPTS);
   uv_membership membership = option ? UV_LEAVE_GROUP : UV_JOIN_GROUP;
 
-  if (uv_udp_set_membership(&self->h.udp, maddr, iaddr, membership)) {
-    uv_err_t err = uv_last_error(luvL_event_loop(L));
+  int err = uv_udp_set_membership(&self->h.udp, maddr, iaddr, membership);
+  if (err < 0) {
     return luaL_error(L, uv_strerror(err));
   }
 

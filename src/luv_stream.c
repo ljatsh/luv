@@ -1,10 +1,9 @@
 #include "luv.h"
 
 /* used by udp and stream */
-uv_buf_t luvL_alloc_cb(uv_handle_t* handle, size_t size) {
-  luv_object_t* self = container_of(handle, luv_object_t, h);
-  size = (size_t)self->buf.len;
-  return uv_buf_init((char*)malloc(size), size);
+void luvL_alloc_cb(uv_handle_t* handle, size_t size, uv_buf_t* buf) {
+  buf->base = (char*) malloc(size);
+  buf->len = size;
 }
 
 /* used by tcp and pipe */
@@ -13,7 +12,7 @@ void luvL_connect_cb(uv_connect_t* req, int status) {
   luvL_state_ready(state);
 }
 
-static void _read_cb(uv_stream_t* stream, ssize_t len, uv_buf_t buf) {
+static void _read_cb(uv_stream_t* stream, ssize_t len, const uv_buf_t* buf) {
   TRACE("got data\n");
   luv_object_t* self  = container_of(stream, luv_object_t, h);
 
@@ -21,15 +20,11 @@ static void _read_cb(uv_stream_t* stream, ssize_t len, uv_buf_t buf) {
     TRACE("empty read queue, save buffer and stop read\n");
     luvL_stream_stop(self);
     if (len >= 0) {
-      self->buf   = buf;
+      self->buf   = *buf;
       self->count = len;
     }
     else {
-      if (buf.base) {
-        free(buf.base);
-        buf.base = NULL;
-        buf.len  = 0;
-      }
+      free(buf->base);
     }
   }
   else {
@@ -46,12 +41,11 @@ static void _read_cb(uv_stream_t* stream, ssize_t len, uv_buf_t buf) {
     lua_settop(s->L, 0);
     if (len >= 0) {
       lua_pushinteger(s->L, len);
-      lua_pushlstring(s->L, (char*)buf.base, len);
+      lua_pushlstring(s->L, (char*)buf->base, len);
       if (len == 0) luvL_stream_stop(self);
     }
     else {
-      uv_err_t err = uv_last_error(s->loop);
-      if (err.code == UV_EOF) {
+      if (len == UV_EOF) {
         TRACE("GOT EOF\n");
         lua_settop(s->L, 0);
         lua_pushnil(s->L);
@@ -61,17 +55,13 @@ static void _read_cb(uv_stream_t* stream, ssize_t len, uv_buf_t buf) {
       else {
         lua_settop(s->L, 0);
         lua_pushboolean(s->L, 0);
-        lua_pushfstring(s->L, "read: %s", uv_strerror(err));
+        lua_pushfstring(s->L, "read: %s", uv_strerror(len));
         TRACE("READ ERROR, CLOSING STREAM\n");
         luvL_stream_stop(self);
         luvL_object_close(self);
       }
     }
-    if (buf.base) {
-      free(buf.base);
-      buf.len  = 0;
-      buf.base = NULL;
-    }
+    free(buf->base);
     TRACE("wake up state: %p\n", s);
     luvL_state_ready(s);
   }
@@ -107,14 +97,13 @@ static void _listen_cb(uv_stream_t* server, int status) {
     TRACE("got client conn: %p\n", conn);
     luvL_object_init(s, conn);
     int rv = uv_accept(&self->h.stream, &conn->h.stream);
-    TRACE("accept returned ok\n");
-    if (rv) {
-      uv_err_t err = uv_last_error(self->h.stream.loop);
-      TRACE("ERROR: %s\n", uv_strerror(err));
+    if (rv < 0) {
+      TRACE("ERROR: %s\n", uv_strerror(rv));
       lua_settop(L, 0);
       lua_pushnil(L);
-      lua_pushstring(L, uv_strerror(err));
+      lua_pushstring(L, uv_strerror(rv));
     }
+    TRACE("accept returned ok\n");
     self->flags &= ~LUV_OWAITING;
     luvL_cond_signal(&self->rouse);
   }
@@ -128,8 +117,8 @@ static int luv_stream_listen(lua_State* L) {
   luaL_checktype(L, 1, LUA_TUSERDATA);
   luv_object_t* self = (luv_object_t*)lua_touserdata(L, 1);
   int backlog = luaL_optinteger(L, 2, 128);
-  if (uv_listen(&self->h.stream, backlog, _listen_cb)) {
-    uv_err_t err = uv_last_error(self->h.stream.loop);
+  int err = uv_listen(&self->h.stream, backlog, _listen_cb);
+  if (err < 0) {
     TRACE("listen error\n");
     return luaL_error(L, "listen: %s", uv_strerror(err));
   }
@@ -147,10 +136,9 @@ static int luv_stream_accept(lua_State *L) {
     self->count--;
     int rv = uv_accept(&self->h.stream, &conn->h.stream);
     if (rv) {
-      uv_err_t err = uv_last_error(self->h.stream.loop);
       lua_settop(L, 0);
       lua_pushnil(L);
-      lua_pushstring(L, uv_strerror(err));
+      lua_pushstring(L, uv_strerror(rv));
       return 2;
     }
     return 1;
@@ -175,8 +163,7 @@ int luvL_stream_stop(luv_object_t* self) {
 }
 
 
-#define STREAM_ERROR(L,fmt,loop) do { \
-  uv_err_t err = uv_last_error(loop); \
+#define STREAM_ERROR(L,fmt,err) do { \
   lua_settop(L, 0); \
   lua_pushboolean(L, 0); \
   lua_pushfstring(L, fmt, uv_strerror(err)); \
@@ -185,10 +172,11 @@ int luvL_stream_stop(luv_object_t* self) {
 
 static int luv_stream_start(lua_State* L) {
   luv_object_t* self = (luv_object_t*)lua_touserdata(L, 1);
-  if (luvL_stream_start(self)) {
+  int err = luvL_stream_start(self);
+  if (err < 0) {
     luvL_stream_stop(self);
     luvL_object_close(self);
-    STREAM_ERROR(L, "read start: %s", luvL_event_loop(L));
+    STREAM_ERROR(L, "read start: %s", err);
     return 2;
   }
   lua_pushboolean(L, 1);
@@ -197,8 +185,9 @@ static int luv_stream_start(lua_State* L) {
 
 static int luv_stream_stop(lua_State* L) {
   luv_object_t* self = (luv_object_t*)lua_touserdata(L, 1);
-  if (luvL_stream_stop(self)) {
-    STREAM_ERROR(L, "read stop: %s", luvL_event_loop(L));
+  int err = luvL_stream_stop(self);
+  if (err < 0) {
+    STREAM_ERROR(L, "read stop: %s", err);
     return 2;
   }
   lua_pushboolean(L, 1);
@@ -228,10 +217,11 @@ static int luv_stream_read(lua_State* L) {
   }
   self->buf.len = len;
   if (!luvL_object_is_started(self)) {
-    if (luvL_stream_start(self)) {
+    int err = luvL_stream_start(self);
+    if (err < 0) {
       luvL_stream_stop(self);
       luvL_object_close(self);
-      STREAM_ERROR(L, "write: %s", luvL_event_loop(L));
+      STREAM_ERROR(L, "write: %s", err);
       return 2;
     }
   }
@@ -250,10 +240,11 @@ static int luv_stream_write(lua_State* L) {
   luv_state_t* curr = luvL_state_self(L);
   uv_write_t*  req  = &curr->req.write;
 
-  if (uv_write(req, &self->h.stream, &buf, 1, _write_cb)) {
+  int err = uv_write(req, &self->h.stream, &buf, 1, _write_cb);
+  if (err < 0) {
     luvL_stream_stop(self);
     luvL_object_close(self);
-    STREAM_ERROR(L, "write: %s", luvL_event_loop(L));
+    STREAM_ERROR(L, "write: %s", err);
     return 2;
   }
 

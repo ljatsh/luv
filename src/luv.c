@@ -88,7 +88,7 @@ uv_loop_t* luvL_event_loop(lua_State* L) {
   return luvL_state_self(L)->loop;
 }
 
-static void _sleep_cb(uv_timer_t* handle, int status) {
+static void _sleep_cb(uv_timer_t* handle) {
   luvL_state_ready((luv_state_t*)handle->data);
   free(handle);
 }
@@ -126,11 +126,11 @@ static int luv_self(lua_State* L) {
 static int luv_cpu_info(lua_State* L) {
   int size, i;
   uv_cpu_info_t* info;
-  uv_err_t err = uv_cpu_info(&info, &size);
+  int err = uv_cpu_info(&info, &size);
 
   lua_settop(L, 0);
 
-  if (err.code) {
+  if (err < 0) {
     lua_pushboolean(L, 0);
     luaL_error(L, uv_strerror(err));
     return 2;
@@ -178,11 +178,11 @@ static int luv_interface_addresses(lua_State* L) {
   char buf[INET6_ADDRSTRLEN];
 
   uv_interface_address_t* info;
-  uv_err_t err = uv_interface_addresses(&info, &size);
+  int err = uv_interface_addresses(&info, &size);
 
   lua_settop(L, 0);
 
-  if (err.code) {
+  if (err < 0) {
     lua_pushboolean(L, 0);
     luaL_error(L, uv_strerror(err));
     return 2;

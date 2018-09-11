@@ -18,7 +18,7 @@ extern "C" {
 }
 #endif
 
-#include "uv/include/uv.h"
+#include "uv.h"
 #include "ngx-queue.h"
 
 #ifdef USE_ZMQ
@@ -28,7 +28,7 @@ extern "C" {
 
 #ifdef LUV_DEBUG
 #  define TRACE(fmt, ...) do { \
-    fprintf(stderr, "%s: %d: %s: " fmt, \
+    fprintf(stdout, "%s: %d: %s: " fmt, \
     __FILE__, __LINE__, __func__, ##__VA_ARGS__); \
   } while (0)
 #else
@@ -253,7 +253,7 @@ int luvL_codec_decode(lua_State* L);
 int luvL_lib_decoder(lua_State* L);
 int luvL_zmq_ctx_decoder(lua_State* L);
 
-uv_buf_t luvL_alloc_cb   (uv_handle_t* handle, size_t size);
+void luvL_alloc_cb   (uv_handle_t* handle, size_t size, uv_buf_t*);
 void     luvL_connect_cb (uv_connect_t* conn, int status);
 
 int luvL_new_class (lua_State* L, const char* name, luaL_Reg* meths);

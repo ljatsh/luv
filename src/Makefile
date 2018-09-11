@@ -2,7 +2,7 @@
 # configuration
 #
 # comment out to not include zmq. may be useful for embedded devices
-USE_ZMQ := 0
+# USE_ZMQ := 0
 
 ##########
 
@@ -12,7 +12,7 @@ COPT = -O2 -fPIC
 
 CWARNS = -Wall -Werror
 
-CFLAGS += $(CWARNS) $(COPT) -I$(LUADIR) -I./uv/include
+CFLAGS += $(CWARNS) $(COPT) -I$(LUADIR) -I./../libuv/include
 ifdef USE_ZMQ
 CFLAGS += -I./zmq/include
 endif
@@ -57,7 +57,7 @@ SRCS += luv_zmq.c
 endif
 OBJS := $(patsubst %.c,%.o,$(SRCS))
 
-LIBS = uv/libuv.a
+LIBS = ../libuv/.libs/libuv.a
 ifdef USE_ZMQ
 LIBS += zmq/src/.libs/libzmq.a
 endif
@@ -74,8 +74,8 @@ libluv.a: $(OBJS) $(LIBS)
 $(OBJS):
 	$(CC) -c $(CFLAGS) $(SRCS)
 
-uv/libuv.a:
-	$(MAKE) CFLAGS="-fPIC" -C ./uv
+../libuv/.libs/libuv.a:
+	$(MAKE) CFLAGS="-fPIC" -C ./../libuv
 
 zmq/src/.libs/libzmq.a: zmq/Makefile
 	$(MAKE) CXXFLAGS="-fPIC" -C ./zmq
@@ -88,8 +88,8 @@ clean:
 	rm -f *.o *.so *.a
 
 realclean: clean
-	$(MAKE) -C ./uv clean
-	$(MAKE) -C ./zmq clean
+	$(MAKE) -C ./../libuv clean
+	#$(MAKE) -C ./zmq clean
 
 .PHONY: all clean realclean deps
 .SILENT:

@@ -20,8 +20,11 @@
     // Insert code here to initialize your application
     
     NSLog(@"Hello, I'm running.");
-    
-    run_test();
+
+    NSString* resourcePath = [[NSBundle mainBundle] resourcePath];
+
+    run_test([resourcePath UTF8String]);
+    NSLog(@"Test Ended");
 }
 
 

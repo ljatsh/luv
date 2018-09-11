@@ -10,7 +10,7 @@ void luvL_thread_ready(luv_thread_t* self) {
 
 int luvL_thread_yield(luv_thread_t* self, int narg) {
   TRACE("calling uv_run_once\n");
-  uv_run_once(self->loop);
+  uv_run(self->loop, UV_RUN_ONCE);
   TRACE("done\n");
   if (narg == LUA_MULTRET) {
     narg = lua_gettop(self->L);
@@ -25,7 +25,7 @@ int luvL_thread_suspend(luv_thread_t* self) {
     do {
       TRACE("loop top\n");
       luvL_thread_loop(self);
-      active = uv_run_once(self->loop);
+      active = uv_run(self->loop, UV_RUN_ONCE);
       TRACE("uv_run_once returned, active: %i\n", active);
       if (self->flags & LUV_FREADY) {
         TRACE("main ready, breaking\n");
@@ -163,10 +163,9 @@ int luvL_thread_loop(luv_thread_t* self) {
   return 0;
 }
 
-static void _async_cb(uv_async_t* handle, int status) {
+static void _async_cb(uv_async_t* handle) {
   TRACE("interrupt loop\n");
   (void)handle;
-  (void)status;
 }
 
 void luvL_thread_init_main(lua_State* L) {
@@ -235,7 +234,8 @@ luv_thread_t* luvL_thread_create(luv_state_t* outer, int narg) {
 
   self->type  = LUV_TTHREAD;
   self->flags = LUV_FREADY;
-  self->loop  = uv_loop_new();
+  self->loop = (uv_loop_t*)malloc(sizeof(uv_loop_t));
+  uv_loop_init(self->loop);
   self->curr  = (luv_state_t*)self;
   self->L     = luaL_newstate();
   self->outer = outer;
@@ -294,7 +294,8 @@ static int luv_thread_join(lua_State* L) {
 static int luv_thread_free(lua_State* L) {
   luv_thread_t* self = lua_touserdata(L, 1);
   TRACE("free thread\n");
-  uv_loop_delete(self->loop);
+  uv_loop_close(self->loop);
+  //free(self->loop);
   TRACE("ok\n");
   return 1;
 }

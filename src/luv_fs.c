@@ -78,9 +78,9 @@ static void luv_push_stats_table(lua_State* L, struct stat* s) {
 
 static void luv_fs_result(lua_State* L, uv_fs_t* req) {
   TRACE("enter fs result...\n");
-  if (req->result == -1) {
+  if (req->result < 0) {
     lua_pushnil(L);
-    lua_pushinteger(L, (uv_err_code)req->errorno);
+    lua_pushinteger(L, req->result);
   }
   else {
     switch (req->fs_type) {
@@ -125,7 +125,7 @@ static void luv_fs_result(lua_State* L, uv_fs_t* req) {
         lua_pushstring(L, (char*)req->ptr);
         break;
 
-      case UV_FS_READDIR:
+      case UV_FS_SCANDIR:
         {
           int i;
           char* namep = (char*)req->ptr;
@@ -173,8 +173,8 @@ static void luv_fs_cb(uv_fs_t* req) {
     } \
     req->data = misc; \
     \
-    if (uv_fs_##func(loop, req, __VA_ARGS__, cb) < 0) { \
-      uv_err_t err = uv_last_error(loop); \
+    int err = uv_fs_##func(loop, req, __VA_ARGS__, cb); \
+    if (err < 0) { \
       lua_settop(L, 0); \
       lua_pushboolean(L, 0); \
       lua_pushstring(L, uv_strerror(err)); \
@@ -230,7 +230,7 @@ static int luv_fs_rmdir(lua_State* L) {
 static int luv_fs_readdir(lua_State* L) {
   const char* path = luaL_checkstring(L, 1);
   lua_settop(L, 0);
-  LUV_FS_CALL(L, readdir, NULL, path, 0);
+  LUV_FS_CALL(L, scandir, NULL, path, 0);
 }
 
 static int luv_fs_stat(lua_State* L) {
@@ -306,9 +306,10 @@ static int luv_fs_chown(lua_State* L) {
 }
 
 static int luv_fs_cwd(lua_State* L) {
+  size_t capacity = LUV_MAX_PATH;
   char buffer[LUV_MAX_PATH];
-  uv_err_t err = uv_cwd(buffer, LUV_MAX_PATH);
-  if (err.code) {
+  int err = uv_cwd(buffer, &capacity);
+  if (err < 0) {
     return luaL_error(L, uv_strerror(err));
   }
   lua_pushstring(L, buffer);
@@ -317,8 +318,8 @@ static int luv_fs_cwd(lua_State* L) {
 
 static int luv_fs_chdir(lua_State* L) {
   const char* dir = luaL_checkstring(L, 1);
-  uv_err_t err = uv_chdir(dir);
-  if (err.code) {
+  int err = uv_chdir(dir);
+  if (err < 0) {
     return luaL_error(L, uv_strerror(err));
   }
   return 0;

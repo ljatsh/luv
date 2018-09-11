@@ -1,6 +1,6 @@
 #include "luv.h"
 
-static void _timer_cb(uv_timer_t* handle, int status) {
+static void _timer_cb(uv_timer_t* handle) {
   luv_object_t* self = container_of(handle, luv_object_t, h);
   ngx_queue_t* q;
   luv_state_t* s;
@@ -8,7 +8,6 @@ static void _timer_cb(uv_timer_t* handle, int status) {
     s = ngx_queue_data(q, luv_state_t, cond);
     TRACE("rouse %p\n", s);
     lua_settop(s->L, 0);
-    lua_pushinteger(s->L, status);
   }
   luvL_cond_broadcast(&self->rouse);
 }

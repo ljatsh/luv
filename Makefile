@@ -1,6 +1,6 @@
 all:
-	git submodule update --init ./src/uv
-	git submodule update --init ./src/zmq
+	#git submodule update --init ./src/uv
+	#git submodule update --init ./src/zmq
 	make -C ./src
 
 clean:

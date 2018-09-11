@@ -31,8 +31,8 @@ static int luv_pipe_bind(lua_State* L) {
   luv_object_t* self = (luv_object_t*)luaL_checkudata(L, 1, LUV_PIPE_T);
   const char*   path = luaL_checkstring(L, 2);
 
-  if (uv_pipe_bind(&self->h.pipe, path)) {
-    uv_err_t err = uv_last_error(self->h.pipe.loop);
+  int err = uv_pipe_bind(&self->h.pipe, path);
+  if (err < 0) {
     return luaL_error(L, uv_strerror(err));
   }
 

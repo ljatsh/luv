@@ -34,7 +34,16 @@
       'mac_bundle' : 1,
       'mac_bundle_resources' : [
         'Base.lproj/MainMenu.xib',
-        'Assets.xcassets'
+        'Assets.xcassets',
+        '../main.lua',
+        '../../examples/fiber.lua',
+        '../../examples/fs.lua',
+        '../../examples/http.lua',
+        '../../examples/stdfh.lua',
+        '../../examples/tcp_client.lua',
+        '../../examples/test.lua',
+        '../../examples/timer.lua',
+        '../../examples/timer2.lua'
       ],
       'sources': [
         'AppDelegate.m',
